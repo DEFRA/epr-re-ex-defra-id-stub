@@ -38,6 +38,8 @@ USER root
 RUN apk add --no-cache curl
 USER node
 
+ENV NODE_ENV=production
+
 COPY --from=production_build /home/node/package*.json ./
 COPY --from=production_build /home/node/src ./src/
 COPY --from=production_build /home/node/.public/ ./.public/
