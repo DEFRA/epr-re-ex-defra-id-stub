@@ -10,6 +10,9 @@ Core delivery platform Node.js Frontend Template.
   - [Node.js](#nodejs)
 - [Server-side Caching](#server-side-caching)
 - [Redis](#redis)
+- [DEFRA ID login stub](#defra-id-login-stub)
+  - [Permanent users](#permanent-users)
+  - [Temporary registrations](#temporary-registrations)
 - [Local Development](#local-development)
   - [Setup](#setup)
   - [Development](#development)
@@ -80,6 +83,32 @@ return await fetch(url, {
   })
 })
 ```
+
+## DEFRA ID login stub
+
+This service stubs the DEFRA ID OIDC provider under `OIDC_BASE_PATH` (default `/epr-re-ex-defra-id-stub`), backed by
+two kinds of user:
+
+### Permanent users
+
+Defined in `data/<USERS_ENV>/users.json` (email, `organisationId`, and optional profile fields). These are loaded at
+startup and never expire. `USERS_ENV` picks which environment's file to load (defaults to `local`); set
+`USERS_FILE_PATH` to point at an arbitrary file instead. Add a user by editing the relevant file and redeploying -
+their email is not listed on the login page's "available users" hint.
+
+### Temporary registrations
+
+Created via the `/register` UI flow or the `POST /API/register` endpoint, and stored in DynamoDB
+(`AWS_DYNAMODB_REGISTRATIONS_TABLE_NAME`, default `epr-re-ex-defra-id-stub-registrations`) with a TTL
+(`REGISTRATIONS_STORE_TTL`, default 3 days). Set `REGISTRATIONS_STORE_ENGINE=memory` to use an in-memory store
+instead (the default outside of `NODE_ENV=production`, useful when you don't have Floci running locally). Temporary
+users' emails are listed on the login page to make local testing easier.
+
+Sign in is email-only (no password) - either interactively via the login page, or by appending `?user=<email>` to the
+`/authorize` request.
+
+For local DynamoDB via Floci, start it with `docker compose up -d floci`; the table and its TTL attribute are created
+automatically by [`compose/floci/start.d/10-setup-resources.sh`](compose/floci/start.d/10-setup-resources.sh).
 
 ## Local Development
 

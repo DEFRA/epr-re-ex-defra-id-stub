@@ -1,0 +1,79 @@
+{% extends "layouts/page.njk" %}
+{% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
+{% from "govuk/components/input/macro.njk" import govukInput %}
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/details/macro.njk" import govukDetails %}
+
+{% block content %}
+  {{ appHeading({
+    text: heading,
+    caption: "DEFRA ID Stub Login"
+  }) }}
+
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+      <div class="govuk-body" data-testid="app-page-body">
+
+        {% if formErrors.email.message %}
+          {{ govukErrorSummary({
+            titleText: "There is a problem",
+            errorList: [
+              { text: formErrors.email.message, href: "#email" } if formErrors.email.message
+            ]
+          }) }}
+        {% endif %}
+
+        <form action="{{ action }}" method="post">
+          {% for field in hiddenFields %}
+            <input type="hidden" name="{{ field.name }}" value="{{ field.value }}"/>
+          {% endfor %}
+
+          {{ govukInput({
+            label: {
+              text: "Email address",
+              classes: "govuk-label--m"
+            },
+            id: "email",
+            name: "email",
+            type: "email",
+            autocomplete: "email",
+            value: email,
+            errorMessage: {
+              text: formErrors.email.message
+            } if formErrors.email.message
+          }) }}
+
+          <div class="govuk-button-group">
+            {{ govukButton({
+              text: "Sign in"
+            }) }}
+          </div>
+        </form>
+
+        {% if availableEmails | length %}
+          {{ govukDetails({
+            summaryText: "Available temporary registrations (dev/test only)",
+            html: "<p class='govuk-body'>" + availableEmails | join("</p><p class='govuk-body'>") + "</p>"
+          }) }}
+        {% else %}
+          <p class="govuk-body govuk-!-margin-top-6">
+            No temporary registrations exist yet.
+          </p>
+        {% endif %}
+
+        <p class="govuk-hint">
+          Sign in with any known email address - no password required. Permanent stub users are defined in
+          <code>data/&lt;env&gt;/users.json</code> (not listed here). Temporary registrations are listed above.
+        </p>
+
+        {% if newRegistrationLink %}
+          <div class="govuk-button-group">
+            <a class="govuk-link" href="{{ newRegistrationLink }}">New registration</a>
+          </div>
+        {% endif %}
+
+      </div>
+    </div>
+  </div>
+
+{% endblock %}

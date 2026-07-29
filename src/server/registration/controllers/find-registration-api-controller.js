@@ -1,0 +1,44 @@
+import Joi from 'joi'
+
+import { findRegistration } from '#/server/registration/helpers/find-registration.js'
+import { findRelationships } from '#/server/registration/helpers/find-relationships.js'
+
+const findRegistrationApiController = {
+  options: {
+    validate: {
+      params: Joi.object({
+        userId: Joi.string().uuid().required()
+      })
+    }
+  },
+  handler: async (request, h) => {
+    const { userId } = request.params
+
+    const registration = await findRegistration(
+      userId,
+      request.registrationsStore
+    )
+
+    if (registration) {
+      request.logger.info({ userId }, 'Registration found')
+
+      const relationships = await findRelationships(
+        userId,
+        request.registrationsStore
+      )
+      registration.relationships = relationships
+      const response = {
+        registration
+      }
+      return h.response(response).code(200)
+    } else {
+      request.logger.info({ userId }, 'Registration not found')
+      const response = {
+        message: 'Registration not found'
+      }
+      return h.response(response).code(404)
+    }
+  }
+}
+
+export { findRegistrationApiController }
