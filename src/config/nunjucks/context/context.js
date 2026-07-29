@@ -31,7 +31,8 @@ export function context(request) {
     navigation: buildNavigation(request),
     getAssetPath(asset) {
       if (!config.get('isProduction')) {
-        return `${assetPath}/${asset}`
+        const isStylesheet = /\.s?css$/.test(asset)
+        return `${assetPath}/${asset}${isStylesheet ? '?direct' : ''}`
       }
 
       const viteAssetPath = viteManifest?.[asset]?.file
