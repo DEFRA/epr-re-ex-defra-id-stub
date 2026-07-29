@@ -43,6 +43,7 @@ ENV NODE_ENV=production
 COPY --from=production_build /home/node/package*.json ./
 COPY --from=production_build /home/node/src ./src/
 COPY --from=production_build /home/node/.public/ ./.public/
+COPY --from=production_build /home/node/data ./data/
 
 RUN npm ci --omit=dev
 
