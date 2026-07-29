@@ -39,7 +39,9 @@ services:
   ################################################################################
 
   your-frontend:
-    build: ./
+    build:
+      context: ./
+      target: development
     ports:
       - '3000:3000'
     links:
