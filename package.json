@@ -36,6 +36,8 @@
   "author": "Defra DDTS",
   "license": "OGL-UK-3.0",
   "dependencies": {
+    "@aws-sdk/client-dynamodb": "3.1067.0",
+    "@aws-sdk/lib-dynamodb": "3.1067.0",
     "@defra/cdp-auditing": "0.6.1",
     "@defra/cdp-metrics": "0.6.0",
     "@defra/hapi-secure-context": "0.4.0",
@@ -58,8 +60,11 @@
     "hapi-pino": "13.0.0",
     "hapi-pulse": "3.0.0",
     "ioredis": "5.8.2",
+    "joi": "17.13.3",
+    "jsonwebtoken": "9.0.2",
     "lodash": "4.18.1",
     "nunjucks": "3.2.4",
+    "pem-jwk": "2.0.0",
     "pino": "10.3.1"
   },
   "devDependencies": {

@@ -1,0 +1,141 @@
+import { config } from '#/config/config.js'
+import {
+  generateIDToken,
+  generateRefreshToken,
+  generateToken
+} from '#/server/oidc/helpers/oidc-crypto.js'
+import {
+  getSessionByToken,
+  sessions
+} from '#/server/oidc/helpers/session-store.js'
+import { validateCodeChallenge } from '#/server/oidc/helpers/validate-code-challenge.js'
+import { oidcConfig } from '#/server/oidc/oidc-config.js'
+
+export const getHost = (request) => {
+  const baseUrl = config.get('appBaseUrl')
+  const { protocol } = new URL(baseUrl)
+
+  return `${protocol}//${request.info.host}`
+}
+
+const tokenController = {
+  handler: async (request, h) => {
+    const logger = request.logger
+
+    logger.info(JSON.stringify(request.payload))
+    const clientId = request.payload.client_id
+    const clientSecret = request.payload.client_secret
+    const grantType = request.payload.grant_type
+    const code = request.payload.code
+    const refreshToken = request.payload.refresh_token
+    const codeVerifier = request.payload.code_verifier
+
+    if (clientId !== oidcConfig.clientId) {
+      logger.warn(`Invalid client id ${clientId}`)
+      // return h.response(`Invalid client id ${clientId}`).code(401)
+    }
+
+    if (clientSecret !== oidcConfig.clientSecret) {
+      logger.error(`Invalid client secret`)
+      return h.response(`Invalid client secret`).code(401)
+    }
+
+    // get the session depending on the grant type
+    let result = null
+
+    if (grantType === 'authorization_code') {
+      // logger.info('handling authorization code')
+      result = getSessionForAuthorizationCode(code)
+      const { valid, err } = validateCodeChallenge(result.session, codeVerifier)
+      if (!valid) {
+        logger.error(err, 'invalid code challenge')
+        return h.response(err).code(401)
+      }
+    } else if (grantType === 'refresh_token') {
+      // logger.info('handling refresh token code')
+      result = getSessionForRefreshToken(refreshToken)
+    } else {
+      logger.error(`invalid grant type ${grantType}`)
+      return h.response(`invalid grant type ${grantType}`).code(400)
+    }
+
+    const { session, valid } = result
+
+    if (!valid) {
+      logger.error('session was missing or invalid')
+      return h
+        .response(`invalid code/token for grant type ${grantType}`)
+        .code(400)
+    }
+
+    // build the token response
+
+    const tokenResponse = {
+      token_type: 'bearer',
+      expires_in: oidcConfig.ttl
+    }
+
+    // copy over the refresh token if its not there
+    // unsure if we still need the !== string 'null' check anymore
+    if (refreshToken) {
+      logger.info(`refresh token ${refreshToken}`)
+      tokenResponse.refresh_token = refreshToken
+    }
+
+    const host = getHost(request)
+
+    tokenResponse.access_token = await generateToken(
+      request.keys,
+      session,
+      host,
+      request.registrationsStore
+    )
+
+    if (session.scopes.includes('openid')) {
+      tokenResponse.id_token = await generateIDToken(
+        request.keys,
+        session,
+        host,
+        request.registrationsStore
+      )
+    }
+    if (session.scopes.includes('offline_access')) {
+      logger.info('generating a refresh token')
+      tokenResponse.refresh_token = await generateRefreshToken(
+        request.keys,
+        session,
+        host,
+        request.registrationsStore
+      )
+    }
+
+    logger.info(tokenResponse)
+
+    return h
+      .response(tokenResponse)
+      .header('Cache-Control', 'no-cache, no-store, must-revalidate')
+      .code(200)
+  }
+}
+
+function getSessionForAuthorizationCode(code) {
+  const session = sessions[code]
+  if (!session || session.granted) {
+    return { session: null, valid: false }
+  }
+  sessions[code].granted = true
+  return {
+    session,
+    valid: true
+  }
+}
+
+function getSessionForRefreshToken(refreshToken) {
+  const session = getSessionByToken(refreshToken)
+  return {
+    session,
+    valid: session !== undefined
+  }
+}
+
+export { tokenController }

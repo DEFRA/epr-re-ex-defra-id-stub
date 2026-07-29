@@ -1,0 +1,37 @@
+import Joi from 'joi'
+
+import { findRegistration } from '#/server/registration/helpers/find-registration.js'
+import { removeAllRelationships } from '#/server/registration/helpers/remove-relationship.js'
+import { removeRegistration } from '#/server/registration/helpers/remove-registration.js'
+import { showLoginPath } from '#/server/registration/helpers/registration-paths.js'
+
+const expireRegistrationController = {
+  options: {
+    validate: {
+      params: Joi.object({
+        userId: Joi.string().uuid().required()
+      })
+    }
+  },
+  handler: async (request, h) => {
+    const { userId } = request.params
+
+    const registration = await findRegistration(
+      userId,
+      request.registrationsStore
+    )
+
+    await removeAllRelationships(userId, request.registrationsStore)
+
+    if (registration) {
+      request.logger.info({ userId }, 'Registration expired')
+      await removeRegistration(userId, request.registrationsStore)
+    } else {
+      request.logger.info({ userId }, 'Registration not found')
+    }
+
+    return h.redirect(showLoginPath())
+  }
+}
+
+export { expireRegistrationController }

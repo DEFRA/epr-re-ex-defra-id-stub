@@ -8,10 +8,17 @@ const dirname = path.dirname(fileURLToPath(import.meta.url))
 
 const fourHoursMs = 14400000
 const oneWeekMs = 604800000
+const oneDayMs = 86400000
+const threeDaysMs = oneDayMs * 3
 
 const isProduction = process.env.NODE_ENV === 'production'
 const isTest = process.env.NODE_ENV === 'test'
 const isDevelopment = process.env.NODE_ENV === 'development'
+
+// Picks which data/<usersEnv>/users.json to load permanent stub users from -
+// distinct from NODE_ENV, which stays production/development/test regardless
+// of which deployed CDP environment (test, ext-test, prod, ...) this is.
+const usersEnv = process.env.USERS_ENV ?? 'local'
 
 convict.addFormats(convictFormatWithValidator)
 
@@ -213,6 +220,108 @@ export const config = convict({
       format: String,
       default: 'x-cdp-request-id',
       env: 'TRACING_HEADER'
+    }
+  },
+  appBaseUrl: {
+    doc: 'Application base URL for after we login',
+    format: String,
+    default: 'http://localhost:3000',
+    env: 'APP_BASE_URL'
+  },
+  usersEnv: {
+    doc: 'Name of the data/<name>/users.json folder permanent stub users are loaded from, unless usersFile/USERS_FILE_PATH overrides it with an absolute path.',
+    format: String,
+    default: usersEnv,
+    env: 'USERS_ENV'
+  },
+  usersFile: {
+    doc: 'Path to the JSON file of permanent stub users (email/organisationId/profile). Defaults to data/<USERS_ENV>/users.json; set USERS_FILE_PATH to override with a specific file.',
+    format: String,
+    default: path.resolve(dirname, `../../data/${usersEnv}/users.json`),
+    env: 'USERS_FILE_PATH'
+  },
+  registrationsStore: {
+    engine: {
+      doc: 'Ephemeral (temporary) registration store backend',
+      format: ['dynamodb', 'memory'],
+      default: process.env.REGISTRATIONS_STORE_ENGINE ?? 'memory',
+      env: 'REGISTRATIONS_STORE_ENGINE'
+    },
+    ttl: {
+      doc: 'Ephemeral registration store item TTL in milliseconds',
+      format: Number,
+      default: threeDaysMs,
+      env: 'REGISTRATIONS_STORE_TTL'
+    }
+  },
+  aws: {
+    region: {
+      doc: 'AWS region for DynamoDB access',
+      format: String,
+      default: 'eu-west-2',
+      env: 'AWS_REGION'
+    },
+    dynamoDb: {
+      endpoint: {
+        doc: 'DynamoDB endpoint for local development',
+        format: String,
+        default: isProduction ? null : 'http://127.0.0.1:4566',
+        nullable: true,
+        env: 'DYNAMODB_ENDPOINT'
+      }
+    }
+  },
+  dynamoDb: {
+    registrationsTableName: {
+      doc: 'Registrations DynamoDB table name',
+      format: String,
+      default: 'epr-re-ex-defra-id-stub-registrations',
+      env: 'AWS_DYNAMODB_REGISTRATIONS_TABLE_NAME'
+    }
+  },
+  oidc: {
+    baseUrl: {
+      doc: 'Application base URL for OIDC config if different from APP_BASE_URL',
+      format: String,
+      default: null,
+      nullable: true,
+      env: 'OIDC_APP_BASE_URL'
+    },
+    basePath: {
+      doc: 'the base path all oidc stubs will be served from',
+      format: String,
+      default: '/epr-re-ex-defra-id-stub',
+      env: 'OIDC_BASE_PATH'
+    },
+    clientId: {
+      doc: 'client id to use in the oidc stub',
+      format: String,
+      default: '63983fc2-cfff-45bb-8ec2-959e21062b9a',
+      env: 'OIDC_CLIENT_ID'
+    },
+    clientSecret: {
+      doc: 'the client secret key for the oidc stub',
+      format: String,
+      default: 'test_value',
+      env: 'OIDC_CLIENT_SECRET'
+    },
+    publicKeyBase64: {
+      doc: 'base 64 encoded public pem',
+      format: String,
+      default: undefined,
+      env: 'OIDC_PUBLIC_KEY_B64'
+    },
+    privateKeyBase64: {
+      doc: 'base 64 encoded private pem',
+      format: String,
+      default: undefined,
+      env: 'OIDC_PRIVATE_KEY_B64'
+    },
+    showLogin: {
+      doc: 'if set, shows login page, else it auto logs in as admin',
+      format: Boolean,
+      default: true,
+      env: 'OIDC_SHOW_LOGIN'
     }
   }
 })

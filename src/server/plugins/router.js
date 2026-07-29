@@ -5,6 +5,8 @@ import { about } from '../routes/about/index.js'
 import { health } from '../routes/health/index.js'
 import { serveStaticFiles } from './serve-static-files.js'
 import { config } from '#/config/config.js'
+import { oidc } from '#/server/oidc/index.js'
+import { registration } from '#/server/registration/index.js'
 
 export const router = {
   plugin: {
@@ -16,7 +18,7 @@ export const router = {
       await server.register([health])
 
       // Application specific routes, add your own routes here
-      await server.register([home, about])
+      await server.register([home, about, oidc, registration])
 
       // Static assets
       if (!config.get('isProduction') && !config.get('isTest')) {
