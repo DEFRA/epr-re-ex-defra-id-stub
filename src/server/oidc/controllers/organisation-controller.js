@@ -1,12 +1,12 @@
 import * as crypto from 'crypto'
-import { sessions } from '#/server/oidc/helpers/session-store.js'
+import { getSession, setSession } from '#/server/oidc/helpers/session-store.js'
 import { oidcBasePath } from '#/server/oidc/oidc-config.js'
 import { findRelationships } from '#/server/registration/helpers/find-relationships.js'
 
 const showOrganisationPickerController = {
   handler: async (request, h) => {
     const sessionId = request.query.sessionId
-    const session = sessions[sessionId]
+    const session = await getSession(sessionId)
 
     if (!session) {
       request.logger.error({ sessionId }, 'Session not found')
@@ -34,6 +34,7 @@ const showOrganisationPickerController = {
       )
       session.relationshipId = relationships[0].relationshipId
       session.relationship = relationships[0]
+      await setSession(sessionId, session)
 
       // Complete authorization - redirect to client's redirect_uri
       const location = new URL(session.redirectUri)
@@ -73,7 +74,7 @@ const selectOrganisationController = {
       return h.response('Missing required fields').code(400)
     }
 
-    const session = sessions[sessionId]
+    const session = await getSession(sessionId)
 
     if (!session) {
       request.logger.error({ sessionId }, 'Session not found')
@@ -100,6 +101,7 @@ const selectOrganisationController = {
     // Store selected relationship in session
     session.relationshipId = relationshipId
     session.relationship = selectedRelationship
+    await setSession(sessionId, session)
 
     request.logger.info(
       {

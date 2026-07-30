@@ -109,7 +109,7 @@ async function completeAuthorization(request, h, user, params) {
 
   request.yar.set('authenticated_user', user.email)
 
-  const session = newSession(
+  const session = await newSession(
     scope,
     nonce,
     user,

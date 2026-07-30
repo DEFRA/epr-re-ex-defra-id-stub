@@ -5,8 +5,9 @@ import {
   generateToken
 } from '#/server/oidc/helpers/oidc-crypto.js'
 import {
+  getSession,
   getSessionByToken,
-  sessions
+  setSession
 } from '#/server/oidc/helpers/session-store.js'
 import { validateCodeChallenge } from '#/server/oidc/helpers/validate-code-challenge.js'
 import { oidcConfig } from '#/server/oidc/oidc-config.js'
@@ -45,7 +46,7 @@ const tokenController = {
 
     if (grantType === 'authorization_code') {
       // logger.info('handling authorization code')
-      result = getSessionForAuthorizationCode(code)
+      result = await getSessionForAuthorizationCode(code)
       const { valid, err } = validateCodeChallenge(result.session, codeVerifier)
       if (!valid) {
         logger.error(err, 'invalid code challenge')
@@ -53,7 +54,7 @@ const tokenController = {
       }
     } else if (grantType === 'refresh_token') {
       // logger.info('handling refresh token code')
-      result = getSessionForRefreshToken(refreshToken)
+      result = await getSessionForRefreshToken(refreshToken)
     } else {
       logger.error(`invalid grant type ${grantType}`)
       return h.response(`invalid grant type ${grantType}`).code(400)
@@ -118,20 +119,20 @@ const tokenController = {
   }
 }
 
-function getSessionForAuthorizationCode(code) {
-  const session = sessions[code]
+async function getSessionForAuthorizationCode(code) {
+  const session = await getSession(code)
   if (!session || session.granted) {
     return { session: null, valid: false }
   }
-  sessions[code].granted = true
+  await setSession(code, { ...session, granted: true })
   return {
     session,
     valid: true
   }
 }
 
-function getSessionForRefreshToken(refreshToken) {
-  const session = getSessionByToken(refreshToken)
+async function getSessionForRefreshToken(refreshToken) {
+  const session = await getSessionByToken(refreshToken)
   return {
     session,
     valid: session !== undefined

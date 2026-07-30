@@ -2,11 +2,12 @@ import {
   selectOrganisationController,
   showOrganisationPickerController
 } from '#/server/oidc/controllers/organisation-controller.js'
-import { sessions } from '#/server/oidc/helpers/session-store.js'
+import { getSession, setSession } from '#/server/oidc/helpers/session-store.js'
 import { findRelationships } from '#/server/registration/helpers/find-relationships.js'
 
 vi.mock('#/server/oidc/helpers/session-store.js', () => ({
-  sessions: {}
+  getSession: vi.fn(),
+  setSession: vi.fn()
 }))
 
 vi.mock('#/server/registration/helpers/find-relationships.js')
@@ -36,7 +37,7 @@ describe('showOrganisationPickerController', () => {
   })
 
   test('Should return 404 when session not found', async () => {
-    sessions['test-session-id'] = undefined
+    getSession.mockResolvedValue(undefined)
 
     await showOrganisationPickerController.handler(mockRequest, mockH)
 
@@ -45,9 +46,9 @@ describe('showOrganisationPickerController', () => {
   })
 
   test('Should return 404 when user has no relationships', async () => {
-    sessions['test-session-id'] = {
+    getSession.mockResolvedValue({
       user: { userId: 'user-123', email: 'test@test.com' }
-    }
+    })
     findRelationships.mockResolvedValue([])
 
     await showOrganisationPickerController.handler(mockRequest, mockH)
@@ -64,20 +65,25 @@ describe('showOrganisationPickerController', () => {
       relationshipRole: 'employee'
     }
 
-    sessions['test-session-id'] = {
+    getSession.mockResolvedValue({
       user: { userId: 'user-123', email: 'test@test.com' },
       forceReselection: false,
       originalAuthorizeUrl: 'http://localhost/authorize?test=1',
       redirectUri: 'http://localhost:3000/callback',
       state: 'abc123',
       sessionId: 'test-session-id'
-    }
+    })
     findRelationships.mockResolvedValue([singleRelationship])
 
     await showOrganisationPickerController.handler(mockRequest, mockH)
 
-    expect(sessions['test-session-id'].relationshipId).toBe('rel-123')
-    expect(sessions['test-session-id'].relationship).toEqual(singleRelationship)
+    expect(setSession).toHaveBeenCalledWith(
+      'test-session-id',
+      expect.objectContaining({
+        relationshipId: 'rel-123',
+        relationship: singleRelationship
+      })
+    )
     expect(mockH.redirect).toHaveBeenCalledWith(
       'http://localhost:3000/callback?code=test-session-id&state=abc123'
     )
@@ -91,10 +97,10 @@ describe('showOrganisationPickerController', () => {
       relationshipRole: 'employee'
     }
 
-    sessions['test-session-id'] = {
+    getSession.mockResolvedValue({
       user: { userId: 'user-123', email: 'test@test.com' },
       forceReselection: true
-    }
+    })
     findRelationships.mockResolvedValue([singleRelationship])
 
     await showOrganisationPickerController.handler(mockRequest, mockH)
@@ -129,10 +135,10 @@ describe('showOrganisationPickerController', () => {
       }
     ]
 
-    sessions['test-session-id'] = {
+    getSession.mockResolvedValue({
       user: { userId: 'user-123', email: 'test@test.com' },
       forceReselection: false
-    }
+    })
     findRelationships.mockResolvedValue(relationships)
 
     await showOrganisationPickerController.handler(mockRequest, mockH)
@@ -185,7 +191,7 @@ describe('selectOrganisationController', () => {
   })
 
   test('Should return 404 when session not found', async () => {
-    sessions['test-session-id'] = undefined
+    getSession.mockResolvedValue(undefined)
 
     await selectOrganisationController.handler(mockRequest, mockH)
 
@@ -202,9 +208,9 @@ describe('selectOrganisationController', () => {
       }
     ]
 
-    sessions['test-session-id'] = {
+    getSession.mockResolvedValue({
       user: { userId: 'user-123', email: 'test@test.com' }
-    }
+    })
     findRelationships.mockResolvedValue(relationships)
 
     await selectOrganisationController.handler(mockRequest, mockH)
@@ -225,20 +231,23 @@ describe('selectOrganisationController', () => {
 
     const relationships = [selectedRelationship]
 
-    sessions['test-session-id'] = {
+    getSession.mockResolvedValue({
       user: { userId: 'user-123', email: 'test@test.com' },
       originalAuthorizeUrl: 'http://localhost/authorize?test=1',
       redirectUri: 'http://localhost:3000/callback',
       state: 'abc123',
       sessionId: 'test-session-id'
-    }
+    })
     findRelationships.mockResolvedValue(relationships)
 
     await selectOrganisationController.handler(mockRequest, mockH)
 
-    expect(sessions['test-session-id'].relationshipId).toBe('rel-123')
-    expect(sessions['test-session-id'].relationship).toEqual(
-      selectedRelationship
+    expect(setSession).toHaveBeenCalledWith(
+      'test-session-id',
+      expect.objectContaining({
+        relationshipId: 'rel-123',
+        relationship: selectedRelationship
+      })
     )
     expect(mockH.redirect).toHaveBeenCalledWith(
       'http://localhost:3000/callback?code=test-session-id&state=abc123'

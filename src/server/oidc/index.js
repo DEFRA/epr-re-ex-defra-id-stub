@@ -14,31 +14,42 @@ import { userInfoController } from '#/server/oidc/controllers/user-info-controll
 import { jwksController } from '#/server/oidc/controllers/well-known-jwks.js'
 import { openIdConfigurationController } from '#/server/oidc/controllers/well-known-openid-configuration.js'
 import {
-  generateRandomKeypair,
+  getOrCreateSharedKeypair,
   loadKeyPair
 } from '#/server/oidc/helpers/oidc-crypto.js'
-import { oidcBasePath } from '#/server/oidc/oidc-config.js'
+import { initSessionStore } from '#/server/oidc/helpers/session-store.js'
+import { oidcBasePath, oidcConfig } from '#/server/oidc/oidc-config.js'
 
 const oidc = {
   plugin: {
     name: 'oidc',
     register: async (server) => {
-      const cfgPubKey = config.get('oidc.publicKeyBase64')
-      const cfgPrivKey = config.get('oidc.privateKeyBase64')
+      // getOrCreateSharedKeypair reads/writes the cache, which requires the
+      // cache client's connection to be started - that only happens once
+      // server.initialize()/start() runs, so this must wait for onPreStart
+      // rather than resolving keys directly during plugin registration.
+      server.ext('onPreStart', async (srv) => {
+        const cfgPubKey = config.get('oidc.publicKeyBase64')
+        const cfgPrivKey = config.get('oidc.privateKeyBase64')
 
-      let keys
-      if (cfgPubKey && cfgPrivKey) {
-        server.logger.info('loading keys from config')
-        keys = loadKeyPair(
-          Buffer.from(cfgPubKey, 'base64'),
-          Buffer.from(cfgPrivKey, 'base64')
-        )
-      } else {
-        server.logger.info('generating random keys')
-        keys = generateRandomKeypair()
-      }
-      server.decorate('server', 'keys', keys)
-      server.decorate('request', 'keys', keys)
+        let keys
+        if (cfgPubKey && cfgPrivKey) {
+          srv.logger.info('loading keys from config')
+          keys = loadKeyPair(
+            Buffer.from(cfgPubKey, 'base64'),
+            Buffer.from(cfgPrivKey, 'base64')
+          )
+        } else {
+          srv.logger.info('loading or generating shared keys')
+          keys = await getOrCreateSharedKeypair(srv)
+        }
+        srv.decorate('server', 'keys', keys)
+        srv.decorate('request', 'keys', keys)
+      })
+
+      // Sessions must outlive refresh tokens - once a refresh token's
+      // backing session is evicted, refreshing fails.
+      initSessionStore(server, oidcConfig.refreshTtl * 1000)
 
       server.route([
         {

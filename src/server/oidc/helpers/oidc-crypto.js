@@ -3,8 +3,11 @@ import { generateDefraIdToken } from '#/server/oidc/helpers/generate-defraid-tok
 import jsonwebtoken from 'jsonwebtoken'
 import { jwk2pem } from 'pem-jwk'
 import { createLogger } from '#/server/common/helpers/logging/logger.js'
+import { config } from '#/config/config.js'
 
 const logger = createLogger()
+
+const tenYearsMs = 10 * 365 * 24 * 60 * 60 * 1000
 
 function loadKeyPair(pub, priv) {
   const privatePem = crypto.createPrivateKey({
@@ -61,6 +64,32 @@ function generateRandomKeypair() {
     keyId,
     pem
   }
+}
+
+// Generates a random keypair on first boot and shares it across replicas
+// (and restarts) via the same cache backend as the yar/oidc session state -
+// without this, every pod would sign with its own key and clients verifying
+// against a different pod's JWKS endpoint would fail signature checks.
+// Only used when no fixed OIDC_PUBLIC_KEY_B64/OIDC_PRIVATE_KEY_B64 is
+// configured. A brief inconsistency is possible if multiple pods generate a
+// keypair concurrently on a cold start before any of them have cached one -
+// acceptable for a stub identity provider, and self-corrects once the cache
+// is populated.
+async function getOrCreateSharedKeypair(server) {
+  const keyCache = server.cache({
+    cache: config.get('session.cache.name'),
+    segment: 'oidc-keys',
+    expiresIn: tenYearsMs
+  })
+
+  const cached = await keyCache.get('keypair')
+  if (cached) {
+    return cached
+  }
+
+  const keys = generateRandomKeypair()
+  await keyCache.set('keypair', keys)
+  return keys
 }
 
 function JWKS(keys) {
@@ -150,6 +179,7 @@ function sha256(input) {
 export {
   loadKeyPair,
   generateRandomKeypair,
+  getOrCreateSharedKeypair,
   JWKS,
   generateToken,
   generateIDToken,
