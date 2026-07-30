@@ -73,5 +73,10 @@
     "userId": "50b1f177-ede3-4d0f-8f5e-6182b5020ecd",
     "email": "giri@test.gov.uk",
     "organisationId": "dc5cb5ac-de72-4f6d-a6e0-64722200ebb9"
+  },
+  {
+    "userId": "12082a4b-dd97-4759-93a2-54e0d3b087d3",
+    "email": "charlotte@test.gov.uk",
+    "organisationId": "ef877091-b6ad-46ba-9d34-14c4a5920c99"
   }
 ]
