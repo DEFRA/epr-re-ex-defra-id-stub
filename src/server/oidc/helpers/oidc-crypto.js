@@ -66,6 +66,25 @@ function generateRandomKeypair() {
   }
 }
 
+// The cache engine wraps an externally-managed ioredis client (see
+// cache-engine.js), so catbox's cache.client.start() returns as soon as the
+// client object exists - it does not wait for the connection to actually
+// reach 'ready'. Reads this early in the server lifecycle (onPreStart) can
+// therefore race ahead of the real handshake and throw Boom 'Disconnected'.
+// Retry for a few seconds rather than assuming the first attempt succeeds.
+async function withCacheRetry(fn, { attempts = 20, delayMs = 250 } = {}) {
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      return await fn()
+    } catch (err) {
+      if (attempt === attempts) {
+        throw err
+      }
+      await new Promise((resolve) => setTimeout(resolve, delayMs))
+    }
+  }
+}
+
 // Generates a random keypair on first boot and shares it across replicas
 // (and restarts) via the same cache backend as the yar/oidc session state -
 // without this, every pod would sign with its own key and clients verifying
@@ -82,13 +101,13 @@ async function getOrCreateSharedKeypair(server) {
     expiresIn: tenYearsMs
   })
 
-  const cached = await keyCache.get('keypair')
+  const cached = await withCacheRetry(() => keyCache.get('keypair'))
   if (cached) {
     return cached
   }
 
   const keys = generateRandomKeypair()
-  await keyCache.set('keypair', keys)
+  await withCacheRetry(() => keyCache.set('keypair', keys))
   return keys
 }
 
