@@ -73,5 +73,25 @@
     "userId": "50b1f177-ede3-4d0f-8f5e-6182b5020ecd",
     "email": "giri@test.gov.uk",
     "organisationId": "dc5cb5ac-de72-4f6d-a6e0-64722200ebb9"
+  },
+  {
+    "userId": "12082a4b-dd97-4759-93a2-54e0d3b087d3",
+    "email": "charlotte@test.gov.uk",
+    "organisationId": "ef877091-b6ad-46ba-9d34-14c4a5920c99"
+  },
+  {
+    "userId": "7b28969e-aed4-48e0-9055-be627fc8bf0a",
+    "email": "testuser1@test.gov.uk",
+    "organisationId": "11c6b358-aea0-4e35-8c32-ce8af2ef8aab"
+  },
+  {
+    "userId": "0172a848-9d6f-4e45-a69f-3233c4609d86",
+    "email": "testuser2@test.gov.uk",
+    "organisationId": "6c562f4f-d04c-456d-b6bc-279efb1ff7c7"
+  },
+  {
+    "userId": "713ab681-df54-4195-acbf-b0926f1f7c83",
+    "email": "exporterRegOnly@test.gov.uk",
+    "organisationId": "48109418-53a0-4a4e-816f-77623e12d7f9"
   }
 ]
