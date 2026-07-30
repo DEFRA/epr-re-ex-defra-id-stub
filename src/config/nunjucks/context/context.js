@@ -13,13 +13,17 @@ const manifestPath = path.join(
 )
 
 let viteManifest
+let viteManifestLoadAttempted = false
 
 export function context(request) {
-  if (config.get('isProduction') && !viteManifest) {
+  if (!viteManifestLoadAttempted) {
+    viteManifestLoadAttempted = true
     try {
       viteManifest = JSON.parse(readFileSync(manifestPath, 'utf-8'))
     } catch (error) {
-      logger.error(`Vite ${path.basename(manifestPath)} not found`)
+      if (error.code !== 'ENOENT') {
+        logger.error(`Vite ${path.basename(manifestPath)} not found`)
+      }
     }
   }
 
@@ -30,12 +34,13 @@ export function context(request) {
     breadcrumbs: [],
     navigation: buildNavigation(request),
     getAssetPath(asset) {
-      if (!config.get('isProduction')) {
-        return `${assetPath}/${asset}`
+      const viteAssetPath = viteManifest?.[asset]?.file
+      if (viteAssetPath) {
+        return `${assetPath}/${viteAssetPath}`
       }
 
-      const viteAssetPath = viteManifest?.[asset]?.file
-      return `${assetPath}/${viteAssetPath ?? asset}`
+      const isStylesheet = /\.s?css$/.test(asset)
+      return `${assetPath}/${asset}${isStylesheet ? '?direct' : ''}`
     }
   }
 }

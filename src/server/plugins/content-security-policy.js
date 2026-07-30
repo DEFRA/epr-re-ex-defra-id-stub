@@ -22,7 +22,13 @@ const contentSecurityPolicy = {
     frameSrc: ['self', 'data:'],
     objectSrc: ['none'],
     frameAncestors: ['none'],
-    formAction: ['self'],
+    // Not 'self': this app's OIDC login/organisation-picker forms complete
+    // by redirecting to whatever redirect_uri a relying-party client
+    // registers (arbitrary origin, by design). Chrome enforces form-action
+    // across a form submission's entire redirect chain, so 'self' here
+    // blocks the final cross-origin hop back to the client - breaking every
+    // real login. cdp-defra-id-stub has no CSP plugin at all, so it never
+    // hit this; this repo's newer template adds one, hence the fix here.
     manifestSrc: ['self'],
     generateNonces: false
   }
