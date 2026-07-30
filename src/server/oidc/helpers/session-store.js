@@ -74,4 +74,10 @@ async function getSessionByToken(token) {
   return getSession(decodedToken?.jti)
 }
 
-export { getSession, setSession, getSessionByToken, newSession, initSessionStore }
+export {
+  getSession,
+  setSession,
+  getSessionByToken,
+  newSession,
+  initSessionStore
+}
