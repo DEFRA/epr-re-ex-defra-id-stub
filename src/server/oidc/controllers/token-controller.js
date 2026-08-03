@@ -1,4 +1,4 @@
-import { config } from '#/config/config.js'
+import { getInternalBaseUrl } from '#/server/oidc/helpers/base-urls.js'
 import {
   generateIDToken,
   generateRefreshToken,
@@ -11,13 +11,6 @@ import {
 } from '#/server/oidc/helpers/session-store.js'
 import { validateCodeChallenge } from '#/server/oidc/helpers/validate-code-challenge.js'
 import { oidcConfig } from '#/server/oidc/oidc-config.js'
-
-export const getHost = (request) => {
-  const baseUrl = config.get('appBaseUrl')
-  const { protocol } = new URL(baseUrl)
-
-  return `${protocol}//${request.info.host}`
-}
 
 const tokenController = {
   handler: async (request, h) => {
@@ -83,7 +76,7 @@ const tokenController = {
       tokenResponse.refresh_token = refreshToken
     }
 
-    const host = getHost(request)
+    const host = getInternalBaseUrl()
 
     tokenResponse.access_token = await generateToken(
       request.keys,
