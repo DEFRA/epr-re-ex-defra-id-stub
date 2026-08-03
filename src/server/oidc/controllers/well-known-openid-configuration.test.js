@@ -21,14 +21,12 @@ describe('well-known openid-configuration', () => {
 
     const doc = invoke()
 
-    // browser-facing -> external (per-stack localhost)
     expect(doc.authorization_endpoint).toBe(
       `http://localhost:13200${basePath}/authorize`
     )
     expect(doc.end_session_endpoint).toBe(
       `http://localhost:13200${basePath}/logout`
     )
-    // server-to-server + issuer -> internal (matches the getHost-derived iss)
     expect(doc.issuer).toBe(`http://defra-id-stub:3200${basePath}`)
     expect(doc.token_endpoint).toBe(
       `http://defra-id-stub:3200${basePath}/token`

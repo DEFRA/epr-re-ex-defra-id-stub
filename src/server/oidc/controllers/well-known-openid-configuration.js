@@ -1,14 +1,12 @@
-import { config } from '#/config/config.js'
+import {
+  getExternalBaseUrl,
+  getInternalBaseUrl
+} from '#/server/oidc/helpers/base-urls.js'
 import { oidcConfig } from '#/server/oidc/oidc-config.js'
 
-// Browser-facing endpoints (the user's agent redirects here) use the external
-// base; server-to-server endpoints and the issuer use the internal base so the
-// fe/be can reach them in-network and the getHost-derived token `iss` matches.
-// When STUB_INTERNAL_URL is unset the internal base falls back to the external
-// one, preserving single-stack behaviour.
 const buildOpenIdConfiguration = () => {
-  const externalBaseUrl = config.get('oidc.baseUrl') || config.get('appBaseUrl')
-  const internalBaseUrl = config.get('oidc.stubInternalUrl') || externalBaseUrl
+  const externalBaseUrl = getExternalBaseUrl()
+  const internalBaseUrl = getInternalBaseUrl()
 
   return {
     issuer: `${internalBaseUrl}${oidcConfig.issuerBase}`,
