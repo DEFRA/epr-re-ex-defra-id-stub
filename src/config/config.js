@@ -287,6 +287,13 @@ export const config = convict({
       nullable: true,
       env: 'OIDC_APP_BASE_URL'
     },
+    stubInternalUrl: {
+      doc: 'Internal base URL for server-to-server OIDC endpoints (token, jwks, userinfo, issuer) and the token issuer. Defaults to the external base. Set this to the in-network stub URL when the external base is a per-stack localhost URL the browser uses.',
+      format: String,
+      default: null,
+      nullable: true,
+      env: 'STUB_INTERNAL_URL'
+    },
     basePath: {
       doc: 'the base path all oidc stubs will be served from',
       format: String,
