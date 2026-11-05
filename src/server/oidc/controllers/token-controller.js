@@ -62,11 +62,13 @@ const tokenController = {
         .code(400)
     }
 
-    // build the token response
-
+    // Shaped like Defra ID's Azure B2C response, which only issues an access
+    // token when the client id is requested as a resource scope.
+    const now = Math.floor(Date.now() / 1000)
     const tokenResponse = {
-      token_type: 'bearer',
-      expires_in: oidcConfig.ttl
+      token_type: 'Bearer',
+      not_before: now,
+      scope: session.scopes.filter((s) => s !== '').join(' ')
     }
 
     // copy over the refresh token if its not there
@@ -78,12 +80,17 @@ const tokenController = {
 
     const host = getInternalBaseUrl()
 
-    tokenResponse.access_token = await generateToken(
-      request.keys,
-      session,
-      host,
-      request.registrationsStore
-    )
+    if (session.scopes.includes(oidcConfig.clientId)) {
+      tokenResponse.access_token = await generateToken(
+        request.keys,
+        session,
+        host,
+        request.registrationsStore
+      )
+      tokenResponse.expires_in = oidcConfig.ttl
+      tokenResponse.expires_on = now + oidcConfig.ttl
+      tokenResponse.resource = oidcConfig.clientId
+    }
 
     if (session.scopes.includes('openid')) {
       tokenResponse.id_token = await generateIDToken(
@@ -92,6 +99,7 @@ const tokenController = {
         host,
         request.registrationsStore
       )
+      tokenResponse.id_token_expires_in = oidcConfig.ttl
     }
     if (session.scopes.includes('offline_access')) {
       logger.info('generating a refresh token')
@@ -101,6 +109,9 @@ const tokenController = {
         host,
         request.registrationsStore
       )
+    }
+    if (tokenResponse.refresh_token) {
+      tokenResponse.refresh_token_expires_in = oidcConfig.refreshTtl
     }
 
     logger.info(tokenResponse)

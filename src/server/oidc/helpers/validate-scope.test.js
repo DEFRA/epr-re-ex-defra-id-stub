@@ -1,4 +1,5 @@
 import { validateScope } from '#/server/oidc/helpers/validate-scope.js'
+import { oidcConfig } from '#/server/oidc/oidc-config.js'
 
 describe('validateScope function', () => {
   it('should return an empty array for valid scopes', () => {
@@ -19,6 +20,12 @@ describe('validateScope function', () => {
   it('should handle single valid scope', () => {
     const singleValidScope = 'openid'
     expect(validateScope(singleValidScope)).toEqual([])
+  })
+
+  it('should accept the client id as a scope', () => {
+    expect(
+      validateScope(`openid offline_access ${oidcConfig.clientId}`)
+    ).toEqual([])
   })
 
   it('should handle single invalid scope', () => {
