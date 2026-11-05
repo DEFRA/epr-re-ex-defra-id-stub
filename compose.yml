@@ -1,7 +1,7 @@
 version: '3.4'
 services:
   floci:
-    image: hectorvent/floci:latest-aws
+    image: hectorvent/floci:latest-aws@sha256:5763c164919c2fb269e1121901a5642efc8b6516eebaeec813d18033f1d360f0
     ports:
       - '4566:4566'
     env_file:
