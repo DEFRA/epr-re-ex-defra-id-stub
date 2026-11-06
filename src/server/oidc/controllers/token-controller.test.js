@@ -141,20 +141,38 @@ describe('token controller', () => {
     })
 
     it.for([
-      { grantType: 'authorization_code', scopes: ['openid', 'offline_access'] },
-      { grantType: 'refresh_token', scopes: ['openid', 'offline_access'] },
-      {
-        grantType: 'authorization_code',
-        scopes: ['openid', 'offline_access', oidcConfig.clientId]
-      },
-      {
-        grantType: 'refresh_token',
-        scopes: ['openid', 'offline_access', oidcConfig.clientId]
-      }
+      { grantType: 'authorization_code' },
+      { grantType: 'refresh_token' }
     ])(
-      'should issue an access token whether or not the client id scope is requested: $grantType $scopes',
-      async ({ grantType, scopes }) => {
-        const body = await issueTokens({ grantType, scopes })
+      'should issue no access token without the client id scope: $grantType',
+      async ({ grantType }) => {
+        const body = await issueTokens({
+          grantType,
+          scopes: ['openid', 'offline_access']
+        })
+
+        expect(body).toStrictEqual({
+          id_token: 'id-token',
+          id_token_expires_in: oidcConfig.ttl,
+          not_before: nowSeconds,
+          refresh_token: 'refresh-token',
+          refresh_token_expires_in: oidcConfig.refreshTtl,
+          scope: 'openid offline_access',
+          token_type: 'Bearer'
+        })
+      }
+    )
+
+    it.for([
+      { grantType: 'authorization_code' },
+      { grantType: 'refresh_token' }
+    ])(
+      'should issue an access token with the client id scope: $grantType',
+      async ({ grantType }) => {
+        const body = await issueTokens({
+          grantType,
+          scopes: ['openid', 'offline_access', oidcConfig.clientId]
+        })
 
         expect(body).toStrictEqual({
           access_token: 'access-token',
@@ -166,7 +184,7 @@ describe('token controller', () => {
           refresh_token: 'refresh-token',
           refresh_token_expires_in: oidcConfig.refreshTtl,
           resource: oidcConfig.clientId,
-          scope: scopes.join(' '),
+          scope: `openid offline_access ${oidcConfig.clientId}`,
           token_type: 'Bearer'
         })
       }
