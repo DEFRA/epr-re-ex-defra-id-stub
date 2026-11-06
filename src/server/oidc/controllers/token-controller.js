@@ -62,8 +62,7 @@ const tokenController = {
         .code(400)
     }
 
-    // Shaped like Defra ID's Azure B2C response, which only issues an access
-    // token when the client id is requested as a resource scope.
+    // Shaped like Defra ID's Azure B2C response.
     const now = Math.floor(Date.now() / 1000)
     const tokenResponse = {
       token_type: 'Bearer',
@@ -80,17 +79,17 @@ const tokenController = {
 
     const host = getInternalBaseUrl()
 
-    if (session.scopes.includes(oidcConfig.clientId)) {
-      tokenResponse.access_token = await generateToken(
-        request.keys,
-        session,
-        host,
-        request.registrationsStore
-      )
-      tokenResponse.expires_in = oidcConfig.ttl
-      tokenResponse.expires_on = now + oidcConfig.ttl
-      tokenResponse.resource = oidcConfig.clientId
-    }
+    // Azure B2C only issues an access token for the client id scope. Issued
+    // regardless until every client asks for it.
+    tokenResponse.access_token = await generateToken(
+      request.keys,
+      session,
+      host,
+      request.registrationsStore
+    )
+    tokenResponse.expires_in = oidcConfig.ttl
+    tokenResponse.expires_on = now + oidcConfig.ttl
+    tokenResponse.resource = oidcConfig.clientId
 
     if (session.scopes.includes('openid')) {
       tokenResponse.id_token = await generateIDToken(
