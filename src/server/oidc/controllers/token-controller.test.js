@@ -1,7 +1,11 @@
 import { config } from '#/config/config.js'
 import { oidcConfig } from '#/server/oidc/oidc-config.js'
-import { generateToken } from '#/server/oidc/helpers/oidc-crypto.js'
-import { getSession, setSession } from '#/server/oidc/helpers/session-store.js'
+import { generateIDToken } from '#/server/oidc/helpers/oidc-crypto.js'
+import {
+  getSession,
+  getSessionByToken,
+  setSession
+} from '#/server/oidc/helpers/session-store.js'
 import { tokenController } from './token-controller.js'
 import { openIdConfigurationController } from './well-known-openid-configuration.js'
 
@@ -38,7 +42,7 @@ const issueTokenFrom = async (requestHost) => {
 
   await tokenController.handler(request, h)
 
-  const [, , issuerBase] = generateToken.mock.calls[0]
+  const [, , issuerBase] = generateIDToken.mock.calls[0]
   return `${issuerBase}${oidcConfig.issuerBase}`
 }
 
@@ -51,7 +55,7 @@ const discoveryIssuer = () => {
 describe('token controller', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    getSession.mockResolvedValue({ scopes: [], granted: false })
+    getSession.mockResolvedValue({ scopes: ['openid'], granted: false })
     setSession.mockResolvedValue(undefined)
   })
 
@@ -92,5 +96,80 @@ describe('token controller', () => {
     const issuer = await issueTokenFrom('somewhere.else')
 
     expect(issuer).toBe(discoveryIssuer())
+  })
+
+  describe('token response', () => {
+    const now = new Date('2026-11-05T12:00:00Z')
+    const nowSeconds = now.getTime() / 1000
+
+    const issueTokens = async ({ grantType, scopes }) => {
+      const session = { scopes, granted: false }
+      getSession.mockResolvedValue(session)
+      getSessionByToken.mockResolvedValue(session)
+
+      let body
+      const request = {
+        logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+        payload: {
+          client_id: oidcConfig.clientId,
+          client_secret: oidcConfig.clientSecret,
+          grant_type: grantType,
+          code: 'a-code',
+          refresh_token: grantType === 'refresh_token' ? 'old-token' : undefined
+        },
+        keys: {},
+        registrationsStore: {}
+      }
+      const h = {
+        response: (payload) => {
+          body = payload
+          return { header: () => ({ code: () => undefined }) }
+        }
+      }
+
+      await tokenController.handler(request, h)
+
+      return body
+    }
+
+    beforeEach(() => {
+      vi.useFakeTimers({ now })
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it.for([
+      { grantType: 'authorization_code', scopes: ['openid', 'offline_access'] },
+      { grantType: 'refresh_token', scopes: ['openid', 'offline_access'] },
+      {
+        grantType: 'authorization_code',
+        scopes: ['openid', 'offline_access', oidcConfig.clientId]
+      },
+      {
+        grantType: 'refresh_token',
+        scopes: ['openid', 'offline_access', oidcConfig.clientId]
+      }
+    ])(
+      'should issue an access token whether or not the client id scope is requested: $grantType $scopes',
+      async ({ grantType, scopes }) => {
+        const body = await issueTokens({ grantType, scopes })
+
+        expect(body).toStrictEqual({
+          access_token: 'access-token',
+          expires_in: oidcConfig.ttl,
+          expires_on: nowSeconds + oidcConfig.ttl,
+          id_token: 'id-token',
+          id_token_expires_in: oidcConfig.ttl,
+          not_before: nowSeconds,
+          refresh_token: 'refresh-token',
+          refresh_token_expires_in: oidcConfig.refreshTtl,
+          resource: oidcConfig.clientId,
+          scope: scopes.join(' '),
+          token_type: 'Bearer'
+        })
+      }
+    )
   })
 })
