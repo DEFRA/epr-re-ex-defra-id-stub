@@ -62,6 +62,7 @@ const tokenController = {
         .code(400)
     }
 
+
     // Shaped like Defra ID's Azure B2C response, which only issues an access
     // token when the client id is requested as a resource scope.
     const now = Math.floor(Date.now() / 1000)
